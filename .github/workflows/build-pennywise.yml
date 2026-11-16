@@ -1,4 +1,5 @@
 
+
 name: Build PennyWise APK
 
 on:
@@ -14,36 +15,51 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Extract source
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Android project
         run: |
           mkdir -p source
           unzip -q PennyWise-Cloud-Build.zip -d source
-          PROJECT_DIR="$(dirname "$(find source -type f -name gradlew -print -quit)")"
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "Gradle wrapper not found"
+
+          GRADLE_WRAPPER="$(find source -type f -name gradlew -print -quit)"
+
+          if [ -z "$GRADLE_WRAPPER" ]; then
+            echo "ERROR: Gradle wrapper not found in ZIP"
             exit 1
           fi
+
+          PROJECT_DIR="$(dirname "$GRADLE_WRAPPER")"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - uses: actions/setup-java@v4
+          echo "Found project at: $PROJECT_DIR"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licences
+        shell: bash
+        run: |
+          set -o pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
 
-      - name: Build APK
+      - name: Build Debug APK
         run: |
           chmod +x "$PROJECT_DIR/gradlew"
           cd "$PROJECT_DIR"
           ./gradlew assembleDebug --stacktrace
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: PennyWise-debug-apk
-          path: source/**/app/build/outputs/apk/debug/*.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 14
           
