@@ -45,6 +45,7 @@ jobs:
       - name: Accept Android SDK licences
         shell: bash
         run: |
+          set +o pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
 
       - name: Build Debug APK
@@ -60,3 +61,4 @@ jobs:
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+          
