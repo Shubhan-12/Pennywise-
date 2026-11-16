@@ -1,0 +1,49 @@
+
+name: Build PennyWise APK
+
+on:
+  push:
+    paths:
+      - 'PennyWise-Cloud-Build.zip'
+      - '.github/workflows/build-pennywise.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract source
+        run: |
+          mkdir -p source
+          unzip -q PennyWise-Cloud-Build.zip -d source
+          PROJECT_DIR="$(dirname "$(find source -type f -name gradlew -print -quit)")"
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Gradle wrapper not found"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        run: |
+          chmod +x "$PROJECT_DIR/gradlew"
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PennyWise-debug-apk
+          path: source/**/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          
